@@ -24,3 +24,5 @@ npx serve .
 ```
 
 > Demo data is fictional and intended for portfolio presentation only.
+
+<!-- Deployment refresh: restore preferred portfolio homepage -->
