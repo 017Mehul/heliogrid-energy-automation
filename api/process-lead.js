@@ -11,7 +11,7 @@ function json(res, status, payload) {
 function safe(value) {
   return String(value ?? "").replace(/[&<>'"]/g, (char) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
-  }[char]));
+  }[char]);
 }
 
 function firstLast(name) {
@@ -22,7 +22,6 @@ function firstLast(name) {
 async function sendWebhook(lead) {
   const url = process.env.AUTOMATION_WEBHOOK_URL;
   if (!url) return { provider: "Webhook", status: "not_configured" };
-
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -35,28 +34,21 @@ async function sendWebhook(lead) {
 async function sendSlack(lead) {
   const url = process.env.SLACK_WEBHOOK_URL;
   if (!url) return { provider: "Slack", status: "not_configured" };
-
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      text: `🚨 New ${lead.qualification.tier} lead — ${lead.lead.name}`,
+    body: {
+      text: `🚨 New ${lead.qualification.tier} MG Labs Co. lead — ${lead.lead.name}`,
       blocks: [
-        {
-          type: "header",
-          text: { type: "plain_text", text: `New ${lead.qualification.tier} lead` }
-        },
-        {
-          type: "section",
-          fields: [
-            { type: "mrkdwn", text: `*Name*\n${lead.lead.name}` },
-            { type: "mrkdwn", text: `*Email*\n${lead.lead.email}` },
-            { type: "mrkdwn", text: `*Score*\n${lead.qualification.score}/100` },
-            { type: "mrkdwn", text: `*Rep*\n${lead.routing.representative}` }
-          ]
-        }
+        { type: "header", text: { type: "plain_text", text: `New ${lead.qualification.tier} lead` } },
+        { type: "section", fields: [
+          { type: "mrkdwn", text: `*Name*\n${lead.lead.name}` },
+          { type: "mrkdwn", text: `*Email*\n${lead.lead.email}` },
+          { type: "mrkdwn", text: `*Service*\n${lead.lead.service}` },
+          { type: "mrkdwn", text: `*Score*\n${lead.qualification.score}/100` }
+        ] }
       ]
-    })
+    }
   });
   if (!response.ok) throw new Error(`Slack returned HTTP ${response.status}`);
   return { provider: "Slack", status: "sent" };
@@ -70,30 +62,26 @@ async function sendEmail(lead) {
 
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${key}`
-    },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     body: JSON.stringify({
       from,
       to: [to],
-      subject: `[${lead.qualification.tier}] New portfolio lead — ${lead.lead.name}`,
+      subject: `[${lead.qualification.tier}] New MG Labs Co. lead — ${lead.lead.name}`,
       html: `
-        <h2>New portfolio lead</h2>
-        <p><strong>${safe(lead.lead.name)}</strong> submitted the lead form.</p>
+        <h2>New MG Labs Co. portfolio lead</h2>
+        <p><strong>${safe(lead.lead.name)}</strong> submitted an inquiry.</p>
         <p><strong>Email:</strong> ${safe(lead.lead.email)}<br>
         <strong>Phone:</strong> ${safe(lead.lead.phone || "Not provided")}<br>
+        <strong>Service:</strong> ${safe(lead.lead.service)}<br>
+        <strong>Budget:</strong> ${safe(lead.lead.budget)}<br>
+        <strong>Timeline:</strong> ${safe(lead.lead.timeline)}<br>
         <strong>Score:</strong> ${lead.qualification.score}/100<br>
-        <strong>Tier:</strong> ${safe(lead.qualification.tier)}<br>
-        <strong>Assigned rep:</strong> ${safe(lead.routing.representative)}</p>
+        <strong>Priority:</strong> ${safe(lead.qualification.tier)}</p>
         <p><strong>Message</strong><br>${safe(lead.lead.message || "No message")}</p>
       `
     })
   });
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`Email failed: ${detail.slice(0, 160)}`);
-  }
+  if (!response.ok) throw new Error(`Email failed: ${(await response.text()).slice(0, 160)}`);
   const data = await response.json();
   return { provider: "Email", status: "sent", id: data.id };
 }
@@ -103,11 +91,7 @@ async function syncHubSpot(lead) {
   if (!token) return { provider: "HubSpot", status: "not_configured" };
 
   const { firstname, lastname } = firstLast(lead.lead.name);
-  const headers = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`
-  };
-
+  const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
   const searchResponse = await fetch("https://api.hubapi.com/crm/v3/objects/contacts/search", {
     method: "POST",
     headers,
@@ -116,8 +100,8 @@ async function syncHubSpot(lead) {
       properties: ["email", "firstname", "lastname", "phone"]
     })
   });
-
   if (!searchResponse.ok) throw new Error(`HubSpot search returned HTTP ${searchResponse.status}`);
+
   const search = await searchResponse.json();
   const properties = {
     email: lead.lead.email,
@@ -151,11 +135,7 @@ async function runIntegration(name, fn) {
   try {
     return await fn();
   } catch (error) {
-    return {
-      provider: name,
-      status: "failed",
-      error: error instanceof Error ? error.message : "Integration failed"
-    };
+    return { provider: name, status: "failed", error: error instanceof Error ? error.message : "Integration failed" };
   }
 }
 
@@ -167,30 +147,31 @@ export default async function handler(req, res) {
   const name = String(body.name || "").trim();
   const email = String(body.email || "").trim();
   const phone = String(body.phone || "").trim();
-  const bill = ["low", "mid", "high"].includes(body.bill) ? body.bill : "mid";
-  const urgency = ["low", "medium", "high"].includes(body.urgency) ? body.urgency : "medium";
+  const service = ["AI Videos", "Websites", "Apps", "UI/UX"].includes(body.service) ? body.service : "Websites";
+  const budget = ["Under ₹10k", "₹10k–₹25k", "₹25k–₹50k", "₹50k+"].includes(body.budget) ? body.budget : "₹10k–₹25k";
+  const timeline = ["Just exploring", "Within 1 month", "Within 2 weeks", "ASAP"].includes(body.timeline) ? body.timeline : "Within 1 month";
   const message = String(body.message || "").trim();
 
   if (!name || !/^\S+@\S+\.\S+$/.test(email)) {
     return json(res, 400, { ok: false, error: "A valid name and email are required." });
   }
 
-  let score = urgency === "high" ? 94 : urgency === "medium" ? 87 : 68;
-  if (bill === "high") score = Math.min(99, score + 4);
-  if (message.length >= 40) score = Math.min(99, score + 1);
+  const budgetScore = { "Under ₹10k": 12, "₹10k–₹25k": 22, "₹25k–₹50k": 30, "₹50k+": 36 }[budget];
+  const timelineScore = { "Just exploring": 8, "Within 1 month": 18, "Within 2 weeks": 25, "ASAP": 30 }[timeline];
+  const serviceScore = { "AI Videos": 18, "Websites": 16, "Apps": 16, "UI/UX": 14 }[service];
+  const messageScore = message.length >= 60 ? 12 : message.length >= 25 ? 7 : 3;
+  const score = Math.min(99, budgetScore + timelineScore + serviceScore + messageScore);
+  const tier = score >= 72 ? "Hot" : score >= 52 ? "Warm" : "Nurture";
 
-  const tier = score >= 88 ? "Hot" : score >= 75 ? "Warm" : "Nurture";
-  const representative = score >= 88 ? "Riya Mehta" : score >= 75 ? "Kabir Singh" : "Ananya Rao";
   const workflowId = crypto.randomUUID();
   const createdAt = new Date().toISOString();
-
   const lead = {
     workflowId,
     createdAt,
-    source: "portfolio_web_form",
-    lead: { name, email, phone, message },
-    qualification: { score, tier, urgency, bill },
-    routing: { representative, territory: "East Valley" }
+    source: "mglabsco_portfolio",
+    lead: { name, email, phone, service, budget, timeline, message },
+    qualification: { score, tier },
+    routing: { representative: "MG Labs Co. — New Business", queue: "portfolio-leads" }
   };
 
   const integrations = {
@@ -202,7 +183,7 @@ export default async function handler(req, res) {
 
   const liveStatuses = Object.values(integrations).filter((item) => item.status !== "not_configured");
   const failed = liveStatuses.filter((item) => item.status === "failed");
-  const sent = liveStatuses.filter((item) => !["failed", "not_configured"].includes(item.status));
+  const successful = liveStatuses.filter((item) => !["failed", "not_configured"].includes(item.status));
 
   return json(res, 200, {
     ok: true,
@@ -214,13 +195,10 @@ export default async function handler(req, res) {
     routing: lead.routing,
     integrations,
     automation: {
-      status: failed.length ? (sent.length ? "partial" : "failed") : (sent.length ? "completed" : "backend_only"),
+      status: failed.length ? (successful.length ? "partial" : "failed") : (successful.length ? "completed" : "backend_only"),
       configuredIntegrations: liveStatuses.length,
-      successfulIntegrations: sent.length
+      successfulIntegrations: successful.length
     },
-    followUp: {
-      bookingReady: Boolean(process.env.BOOKING_URL),
-      bookingUrl: process.env.BOOKING_URL || null
-    }
+    followUp: { bookingReady: Boolean(process.env.BOOKING_URL), bookingUrl: process.env.BOOKING_URL || null }
   });
 }
