@@ -1,28 +1,28 @@
 # HelioGrid Energy — AI Lead Automation
 
-A production-style portfolio case study for a solar lead qualification and routing workflow.
+A live portfolio automation for capturing, qualifying, routing, notifying, and handing off inbound leads.
 
-The project demonstrates how an inbound residential-solar lead can move from capture → qualification → routing → CRM/notification handoff → appointment readiness through a single automated pipeline.
+The workflow accepts a real web lead, scores it, routes it, and can trigger real HubSpot, Slack, email, webhook, and booking actions from a Vercel serverless function.
 
 ## Live Demo
 
 - **Production:** https://heliogrid-energy.themglabs.com
 - **Vercel:** https://heliogrid-energy-automation.vercel.app
 
-## What it demonstrates
+## What it does
 
 - Responsive, case-study style landing page
-- Interactive lead intake form
+- Real lead intake form\n- Serverless qualification and routing\n- Real external actions when environment variables are configured
 - Serverless lead-processing API
 - Deterministic lead qualification and scoring
 - Hot / Warm / Nurture classification
 - Automatic representative routing
 - Step-by-step workflow activity timeline
 - API error handling and retry state
-- Browser-persisted recent lead history
+- Browser-persisted recent lead history for the portfolio UI
 - Live automation telemetry
 - Appointment handoff state
-- Integration-ready architecture for CRM, Slack and SMS
+- HubSpot contact sync\n- Slack notifications\n- Resend email notifications\n- n8n / Make / Zapier-compatible webhook\n- Live booking handoff
 
 ## Architecture
 
@@ -96,7 +96,7 @@ npx serve .
 
 The static server will not provide the `/api/process-lead` serverless endpoint.
 
-## API
+## Environment variables\n\nSee `.env.example`. At minimum, configure `RESEND_API_KEY`, `LEAD_NOTIFY_EMAIL`, and `LEAD_FROM_EMAIL` for a real email notification workflow. Add HubSpot, Slack, a generic automation webhook, and a booking URL as needed.\n\n## API
 
 ### POST `/api/process-lead`
 
