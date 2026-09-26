@@ -37,7 +37,7 @@ async function sendSlack(lead) {
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: {
+    body: JSON.stringify({
       text: `🚨 New ${lead.qualification.tier} MG Labs Co. lead — ${lead.lead.name}`,
       blocks: [
         { type: "header", text: { type: "plain_text", text: `New ${lead.qualification.tier} lead` } },
@@ -48,7 +48,7 @@ async function sendSlack(lead) {
           { type: "mrkdwn", text: `*Score*\n${lead.qualification.score}/100` }
         ] }
       ]
-    }
+    })
   });
   if (!response.ok) throw new Error(`Slack returned HTTP ${response.status}`);
   return { provider: "Slack", status: "sent" };
