@@ -17,3 +17,14 @@ test("live integrations require both explicit switches",()=>{
   assert.equal(integrationsAllowed({DEMO_MODE:"false",ENABLE_REAL_INTEGRATIONS:"true"}),true);
   assert.equal(integrationsAllowed({DEMO_MODE:"false",ENABLE_REAL_INTEGRATIONS:"false"}),false);
 });
+test("allows same-origin preview requests when APP_ORIGIN points to production",async()=>{
+  const oldOrigin=process.env.APP_ORIGIN;
+  process.env.APP_ORIGIN="https://heliogrid-energy.themglabs.com";
+  try{
+    const r=response();
+    await handler({method:"POST",headers:{origin:"https://preview.example.vercel.app",host:"preview.example.vercel.app","x-forwarded-host":"preview.example.vercel.app","x-forwarded-proto":"https"},body:{...lead,email:"bad"}},r);
+    assert.equal(r.statusCode,400);
+  } finally {
+    if(oldOrigin===undefined)delete process.env.APP_ORIGIN; else process.env.APP_ORIGIN=oldOrigin;
+  }
+});
