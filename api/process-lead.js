@@ -1,3 +1,7 @@
+import { createHash } from "node:crypto";
+
+export const RATE_LIMIT_MAX_REQUESTS = 10;
+export const RATE_LIMIT_WINDOW_MINUTES = 15;
 const services = ["AI Videos","Websites","Apps","UI/UX"];
 const budgets = ["Under ₹10k","₹10k–₹25k","₹25k–₹50k","₹50k+"];
 const timelines = ["Just exploring","Within 1 month","Within 2 weeks","ASAP"];
@@ -5,6 +9,7 @@ const demo = process.env.DEMO_MODE !== "false";
 // Never permit external side effects while the endpoint is in sandbox mode.
 const integrationsEnabled = integrationsAllowed(process.env);
 let poolPromise;
+let rateLimitTablePromise;
 
 export function integrationsAllowed(env = process.env) {
   return env.DEMO_MODE === "false" && env.ENABLE_REAL_INTEGRATIONS === "true";
@@ -48,6 +53,58 @@ async function getPool(){
   }
   return poolPromise;
 }
+export function clientIpHash(headers = {}) {
+  const direct = s(headers["x-real-ip"]);
+  const forwarded = s(headers["x-forwarded-for"]).split(",")[0].trim();
+  const ip = direct || forwarded;
+  return ip ? createHash("sha256").update(ip).digest("hex") : null;
+}
+
+async function enforceRateLimit(req) {
+  const ipHash = clientIpHash(req.headers || {});
+  if (!ipHash) throw new Error("Client IP is unavailable for rate limiting");
+  const pool = await getPool();
+  if (!rateLimitTablePromise) {
+    rateLimitTablePromise = pool.query(`
+      CREATE TABLE IF NOT EXISTS public.automation_rate_limits (
+        ip_hash text PRIMARY KEY,
+        window_started_at timestamptz NOT NULL DEFAULT now(),
+        request_count integer NOT NULL DEFAULT 0 CHECK (request_count >= 0),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )
+    `).catch((error) => {
+      rateLimitTablePromise = null;
+      throw error;
+    });
+  }
+  await rateLimitTablePromise;
+  const result = await pool.query(`
+    INSERT INTO public.automation_rate_limits (ip_hash, window_started_at, request_count, updated_at)
+    VALUES ($1, now(), 1, now())
+    ON CONFLICT (ip_hash) DO UPDATE SET
+      request_count = CASE
+        WHEN automation_rate_limits.window_started_at <= now() - interval '15 minutes' THEN 1
+        ELSE automation_rate_limits.request_count + 1
+      END,
+      window_started_at = CASE
+        WHEN automation_rate_limits.window_started_at <= now() - interval '15 minutes' THEN now()
+        ELSE automation_rate_limits.window_started_at
+      END,
+      updated_at = now()
+    RETURNING request_count,
+      GREATEST(1, CEIL(EXTRACT(EPOCH FROM (window_started_at + interval '15 minutes' - now())))::integer) AS retry_after_seconds
+  `, [ipHash]);
+  const row = result.rows[0];
+  if (row.request_count % 100 === 0) {
+    await pool.query("DELETE FROM public.automation_rate_limits WHERE updated_at < now() - interval '7 days'").catch(() => {});
+  }
+  return {
+    allowed: row.request_count <= RATE_LIMIT_MAX_REQUESTS,
+    remaining: Math.max(0, RATE_LIMIT_MAX_REQUESTS - row.request_count),
+    retryAfterSeconds: Number(row.retry_after_seconds) || 60
+  };
+}
+
 async function persist(r){
   const pool=await getPool(),l=r.lead;
   await pool.query(
@@ -118,6 +175,19 @@ export default async function handler(req,res){
   if(l.phone.length>40||l.message.length>2000)return reply(res,400,{ok:false,error:"Phone or message exceeds the allowed length."});
   if(!services.includes(l.service)||!budgets.includes(l.budget)||!timelines.includes(l.timeline))return reply(res,400,{ok:false,error:"Choose a valid service, budget and timeline."});
   if(!process.env.DATABASE_URL)return reply(res,503,{ok:false,error:"Demo storage is not configured yet."});
+
+  let limit;
+  try { limit = await enforceRateLimit(req); }
+  catch (e) {
+    console.error("Rate limiter unavailable", e);
+    return reply(res,503,{ok:false,error:"Submission protection is temporarily unavailable. Please retry shortly."});
+  }
+  res.setHeader("X-RateLimit-Limit", String(RATE_LIMIT_MAX_REQUESTS));
+  res.setHeader("X-RateLimit-Remaining", String(limit.remaining));
+  if (!limit.allowed) {
+    res.setHeader("Retry-After", String(limit.retryAfterSeconds));
+    return reply(res,429,{ok:false,error:"Too many demo submissions from this network. Please wait before trying again."});
+  }
 
   const record={workflowId:crypto.randomUUID(),createdAt:new Date().toISOString(),source:"heliogrid_public_demo",mode:demo?"sandbox":"live",lead:l,qualification:score(l),routing:{representative:"MG Labs Co. — New Business",queue:"portfolio-leads"}};
   const entries=[["hubspot","HubSpot"],["slack","Slack"],["email","Email"],["webhook","Webhook"]];
