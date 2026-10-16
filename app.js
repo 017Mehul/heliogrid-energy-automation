@@ -58,7 +58,7 @@ $('form')?.addEventListener('submit', async (event) => {
   $('timeline').innerHTML = '';
   $('result').classList.remove('show');
 
-  const payload = { name: $('name').value.trim(), email: $('email').value.trim(), phone: $('phone')?.value.trim() || '', service: $('service').value, budget: $('budget').value, timeline: $('timeline-select').value, message: $('message').value.trim() };
+  const payload = { name: $('name').value.trim(), email: $('email').value.trim(), phone: $('phone')?.value.trim() || '', website: $('website')?.value.trim() || '', service: $('service').value, budget: $('budget').value, timeline: $('timeline-select').value, message: $('message').value.trim() };
 
   eventItem('Lead received', 'Lead captured and sent to the serverless sandbox workflow.', 'running');
 
