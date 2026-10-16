@@ -29,6 +29,7 @@ function eventItem(title, description, state = 'complete') {
 
 function statusLabel(item) {
   if (!item) return 'unknown';
+  if (item.status === 'disabled_in_sandbox') return 'disabled in sandbox';
   if (item.status === 'not_configured') return 'not configured';
   if (['sent','created','updated'].includes(item.status)) return 'live';
   return item.status;
