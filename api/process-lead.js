@@ -104,7 +104,12 @@ async function external(name,record){
 export default async function handler(req,res){
   if(req.method==="OPTIONS")return reply(res,204,{});
   if(req.method!=="POST")return reply(res,405,{ok:false,error:"Method not allowed"});
-  if(process.env.APP_ORIGIN&&req.headers.origin&&req.headers.origin!==process.env.APP_ORIGIN)return reply(res,403,{ok:false,error:"Origin not allowed"});
+  const origin=s(req.headers?.origin);
+  if(origin&&process.env.APP_ORIGIN&&origin!==process.env.APP_ORIGIN){
+    const host=s(req.headers?.["x-forwarded-host"]||req.headers?.host).split(",")[0];
+    const protocol=s(req.headers?.["x-forwarded-proto"]).split(",")[0]||"https";
+    if(!host||origin!==`${protocol}://${host}`)return reply(res,403,{ok:false,error:"Origin not allowed"});
+  }
   const b=req.body&&typeof req.body==="object"&&!Array.isArray(req.body)?req.body:{};
   const l={name:s(b.name),email:s(b.email).toLowerCase(),phone:s(b.phone),message:s(b.message),service:b.service,budget:b.budget,timeline:b.timeline};
   if(!l.name||l.name.length>100)return reply(res,400,{ok:false,error:"Name is required (maximum 100 characters)."});
