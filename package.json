@@ -1,0 +1,1 @@
+{"name":"heliogrid-energy-automation","version":"1.0.0","private":true,"type":"module","scripts":{"test":"node --test","check":"node --check api/process-lead.js && node --check app.js"},"engines":{"node":">=20"}}
