@@ -28,3 +28,4 @@ test("allows same-origin preview requests when APP_ORIGIN points to production",
     if(oldOrigin===undefined)delete process.env.APP_ORIGIN; else process.env.APP_ORIGIN=oldOrigin;
   }
 });
+test("rejects honeypot-filled bot submissions",async()=>{const r=response();await handler({method:"POST",headers:{},body:{...lead,website:"https://spam.example"}},r);assert.equal(r.statusCode,400);assert.equal(r.payload.error,"Invalid submission.");});
