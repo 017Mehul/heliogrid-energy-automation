@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "check": "node --check api/process-lead.js && node --check app.js"
+    "check": "node --check api/process-lead.js && node --check api/cleanup-demo-leads.js && node --check app.js && node --check scripts/production-smoke.mjs",
+    "smoke:production": "node scripts/production-smoke.mjs"
   },
   "engines": { "node": ">=20" },
   "dependencies": { "pg": "^8.16.3" }
