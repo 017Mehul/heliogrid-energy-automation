@@ -111,6 +111,7 @@ export default async function handler(req,res){
     if(!host||origin!==`${protocol}://${host}`)return reply(res,403,{ok:false,error:"Origin not allowed"});
   }
   const b=req.body&&typeof req.body==="object"&&!Array.isArray(req.body)?req.body:{};
+  if(s(b.website))return reply(res,400,{ok:false,error:"Invalid submission."});
   const l={name:s(b.name),email:s(b.email).toLowerCase(),phone:s(b.phone),message:s(b.message),service:b.service,budget:b.budget,timeline:b.timeline};
   if(!l.name||l.name.length>100)return reply(res,400,{ok:false,error:"Name is required (maximum 100 characters)."});
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(l.email)||l.email.length>254)return reply(res,400,{ok:false,error:"Enter a valid email address."});
