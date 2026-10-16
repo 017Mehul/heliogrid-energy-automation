@@ -53,13 +53,13 @@ $('form')?.addEventListener('submit', async (event) => {
   event.preventDefault();
   const button = $('run');
   button.disabled = true;
-  button.textContent = 'Running live automation…';
+  button.textContent = 'Running sandbox automation…';
   $('timeline').innerHTML = '';
   $('result').classList.remove('show');
 
   const payload = { name: $('name').value.trim(), email: $('email').value.trim(), phone: $('phone')?.value.trim() || '', service: $('service').value, budget: $('budget').value, timeline: $('timeline-select').value, message: $('message').value.trim() };
 
-  eventItem('Lead received', 'Lead captured and sent to the live serverless workflow.', 'running');
+  eventItem('Lead received', 'Lead captured and sent to the serverless sandbox workflow.', 'running');
 
   try {
     const response = await fetch('/api/process-lead', {
@@ -76,7 +76,7 @@ $('form')?.addEventListener('submit', async (event) => {
     eventItem('Smart routing', `Classified as ${data.qualification.tier}; assigned to ${data.routing.representative}.`);
 
     const integrationEntries = [
-      ['HubSpot CRM', data.integrations?.crm],
+      ['HubSpot CRM', data.integrations?.hubspot],
       ['Slack', data.integrations?.slack],
       ['Email', data.integrations?.email],
       ['Automation webhook', data.integrations?.webhook]
