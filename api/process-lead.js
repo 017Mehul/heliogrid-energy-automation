@@ -2,8 +2,13 @@ const services = ["AI Videos","Websites","Apps","UI/UX"];
 const budgets = ["Under ₹10k","₹10k–₹25k","₹25k–₹50k","₹50k+"];
 const timelines = ["Just exploring","Within 1 month","Within 2 weeks","ASAP"];
 const demo = process.env.DEMO_MODE !== "false";
-const integrationsEnabled = process.env.ENABLE_REAL_INTEGRATIONS === "true";
+// Never permit external side effects while the endpoint is in sandbox mode.
+const integrationsEnabled = integrationsAllowed(process.env);
 let poolPromise;
+
+export function integrationsAllowed(env = process.env) {
+  return env.DEMO_MODE === "false" && env.ENABLE_REAL_INTEGRATIONS === "true";
+}
 
 function reply(res,status,data){
   res.setHeader("Content-Type","application/json; charset=utf-8");
