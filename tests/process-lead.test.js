@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import handler, { integrationsAllowed } from "../api/process-lead.js";
+import handler, { clientIpHash, integrationsAllowed, RATE_LIMIT_MAX_REQUESTS, RATE_LIMIT_WINDOW_MINUTES } from "../api/process-lead.js";
 function response(){return {statusCode:200,headers:{},payload:null,setHeader(k,v){this.headers[k]=v},status(n){this.statusCode=n;return this},json(v){this.payload=v;return this}}}
 const lead={name:"Demo User",email:"demo@example.com",phone:"",service:"Websites",budget:"₹10k–₹25k",timeline:"Within 1 month",message:"A demo project with enough detail to qualify."};
 test("rejects GET",async()=>{const r=response();await handler({method:"GET",headers:{}},r);assert.equal(r.statusCode,405)});
@@ -29,3 +29,21 @@ test("allows same-origin preview requests when APP_ORIGIN points to production",
   }
 });
 test("rejects honeypot-filled bot submissions",async()=>{const r=response();await handler({method:"POST",headers:{},body:{...lead,website:"https://spam.example"}},r);assert.equal(r.statusCode,400);assert.equal(r.payload.error,"Invalid submission.");});
+
+test("rate limit hashes client IPs without exposing raw addresses",()=>{
+  const a=clientIpHash({"x-real-ip":"203.0.113.10","x-forwarded-for":"198.51.100.4"});
+  const b=clientIpHash({"x-real-ip":"203.0.113.10"});
+  assert.equal(a,b);
+  assert.equal(a.length,64);
+  assert.equal(a.includes("203.0.113.10"),false);
+});
+test("rate limiter has a conservative public-demo threshold",()=>{
+  assert.equal(RATE_LIMIT_MAX_REQUESTS,10);
+  assert.equal(RATE_LIMIT_WINDOW_MINUTES,15);
+});
+test("rate limiter can use the first forwarded address when real IP is unavailable",()=>{
+  const a=clientIpHash({"x-forwarded-for":"198.51.100.4, 203.0.113.10"});
+  const b=clientIpHash({"x-forwarded-for":"198.51.100.4"});
+  assert.equal(a,b);
+  assert.equal(clientIpHash({}),null);
+});
