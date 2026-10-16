@@ -10,7 +10,7 @@ style.textContent = `
 .live-stat{padding:12px;border-radius:12px;background:#f4f8fb;border:1px solid #e4edf4}
 .live-stat strong{display:block;font-size:22px}.live-stat span{font-size:11px;color:#718096}
 .history-row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #e5edf4;font-size:12px}
-.history-row:last-child{border-bottom:0}.history-row small{color:#718096}
+.history-row:last-child{border-bottom:0}.history-row small{color:#718096}.history-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.history-clear{border:1px solid #dfe8f0;background:#fff;border-radius:9px;padding:7px 10px;color:#526177;font-size:11px;font-weight:700;cursor:pointer}.history-clear:hover{border-color:#94a9bc}
 .status-running{color:#b7791f}.status-complete{color:#13804b}.status-failed{color:#c53030}
 @media(max-width:700px){.live-grid{grid-template-columns:1fr}}
 `;
@@ -45,10 +45,28 @@ function renderHistory() {
   }
   const hot = history.filter((lead) => lead.tier === 'Hot').length;
   const avg = history.length ? Math.round(history.reduce((sum, lead) => sum + lead.score, 0) / history.length) : 0;
-  panel.innerHTML = `<b>Local test history</b><div class="live-grid"><div class="live-stat"><strong>${history.length}</strong><span>Leads processed in this browser</span></div><div class="live-stat"><strong>${hot}</strong><span>Hot leads</span></div><div class="live-stat"><strong>${avg || '—'}</strong><span>Average score</span></div></div><div style="margin-top:16px"><b>Recent activity</b>${history.slice(-5).reverse().map((lead) => `<div class="history-row"><span>${escapeHtml(lead.name)}<br><small>${escapeHtml(lead.email)}</small></span><span>${lead.score}/100 · ${escapeHtml(lead.tier)}<br><small>${escapeHtml(lead.rep)}</small></span></div>`).join('') || '<p style="color:#718096;font-size:12px">No leads processed in this browser yet.</p>'}</div>`;
+  panel.innerHTML = `<div class="history-head"><b>Local test history</b><button class="history-clear" type="button" id="clear-history" ${history.length ? "" : "disabled"}>Clear browser history</button></div><div class="live-grid"><div class="live-stat"><strong>${history.length}</strong><span>Leads processed in this browser</span></div><div class="live-stat"><strong>${hot}</strong><span>Hot leads</span></div><div class="live-stat"><strong>${avg || '—'}</strong><span>Average score</span></div></div><div style="margin-top:16px"><b>Recent activity</b>${history.slice(-5).reverse().map((lead) => `<div class="history-row"><span>${escapeHtml(lead.name)}<br><small>${escapeHtml(lead.email)}</small></span><span>${lead.score}/100 · ${escapeHtml(lead.tier)}<br><small>${escapeHtml(lead.rep)}</small></span></div>`).join('') || '<p style="color:#718096;font-size:12px">No leads processed in this browser yet.</p>'}</div>`;
 }
 
 renderHistory();
+$('live-panel')?.addEventListener('click', (event) => {
+  if (event.target?.id !== 'clear-history') return;
+  history = [];
+  localStorage.removeItem('heliogrid-leads');
+  renderHistory();
+});
+
+$('sample')?.addEventListener('click', () => {
+  $('name').value = 'Aarav Sharma';
+  $('email').value = 'aarav@example.com';
+  $('phone').value = '';
+  $('service').value = 'Websites';
+  $('budget').value = '₹25k–₹50k';
+  $('timeline-select').value = 'Within 2 weeks';
+  $('message').value = 'I need a conversion-focused website for my small business and want to start within the next two weeks. Please share the project scope and next steps.';
+  $('website').value = '';
+  $('name').focus();
+});
 
 $('form')?.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -93,6 +111,8 @@ $('form')?.addEventListener('submit', async (event) => {
     $('tier').textContent = `${data.qualification.tier.toUpperCase()} LEAD`;
     $('score').textContent = `${data.qualification.score} / 100`;
     $('rep').textContent = data.routing.representative;
+    $('mode').textContent = `${String(data.mode || 'sandbox').toUpperCase()} · ${data.automation.status}`;
+    $('workflow-id').textContent = data.workflowId;
     $('result').classList.add('show');
 
     latest = data;
