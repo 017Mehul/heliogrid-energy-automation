@@ -44,7 +44,7 @@ function renderHistory() {
   }
   const hot = history.filter((lead) => lead.tier === 'Hot').length;
   const avg = history.length ? Math.round(history.reduce((sum, lead) => sum + lead.score, 0) / history.length) : 0;
-  panel.innerHTML = `<b>Live automation</b><div class="live-grid"><div class="live-stat"><strong>${history.length}</strong><span>Leads processed in this browser</span></div><div class="live-stat"><strong>${hot}</strong><span>Hot leads</span></div><div class="live-stat"><strong>${avg || '—'}</strong><span>Average score</span></div></div><div style="margin-top:16px"><b>Recent activity</b>${history.slice(-5).reverse().map((lead) => `<div class="history-row"><span>${escapeHtml(lead.name)}<br><small>${escapeHtml(lead.email)}</small></span><span>${lead.score}/100 · ${escapeHtml(lead.tier)}<br><small>${escapeHtml(lead.rep)}</small></span></div>`).join('') || '<p style="color:#718096;font-size:12px">No leads processed in this browser yet.</p>'}</div>`;
+  panel.innerHTML = `<b>Local test history</b><div class="live-grid"><div class="live-stat"><strong>${history.length}</strong><span>Leads processed in this browser</span></div><div class="live-stat"><strong>${hot}</strong><span>Hot leads</span></div><div class="live-stat"><strong>${avg || '—'}</strong><span>Average score</span></div></div><div style="margin-top:16px"><b>Recent activity</b>${history.slice(-5).reverse().map((lead) => `<div class="history-row"><span>${escapeHtml(lead.name)}<br><small>${escapeHtml(lead.email)}</small></span><span>${lead.score}/100 · ${escapeHtml(lead.tier)}<br><small>${escapeHtml(lead.rep)}</small></span></div>`).join('') || '<p style="color:#718096;font-size:12px">No leads processed in this browser yet.</p>'}</div>`;
 }
 
 renderHistory();
@@ -53,7 +53,7 @@ $('form')?.addEventListener('submit', async (event) => {
   event.preventDefault();
   const button = $('run');
   button.disabled = true;
-  button.textContent = 'Running sandbox automation…';
+  button.textContent = 'Saving test submission…';
   $('timeline').innerHTML = '';
   $('result').classList.remove('show');
 
@@ -71,7 +71,7 @@ $('form')?.addEventListener('submit', async (event) => {
     if (!response.ok || !data.ok) throw new Error(data.error || 'Automation request failed');
 
     await wait(250);
-    eventItem('AI qualification', `Score calculated: ${data.qualification.score}/100.`);
+    eventItem('Rules-based qualification', `Score calculated: ${data.qualification.score}/100 using deterministic rules.`);
     await wait(250);
     eventItem('Smart routing', `Classified as ${data.qualification.tier}; assigned to ${data.routing.representative}.`);
 
