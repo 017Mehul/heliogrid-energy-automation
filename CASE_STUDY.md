@@ -13,6 +13,7 @@ Small teams can lose inquiries when they manually triage every form submission. 
 ## Solution
 
 - Capture a test inquiry through a responsive HTML form.
+- Show a visible test-data disclaimer and reject honeypot-filled submissions to filter basic bots.
 - Validate the required name, email, service, budget, and timeline on both client and server.
 - Calculate a deterministic qualification score using budget, timeline, service, and message length.
 - Assign a lead tier (Hot, Warm, or Nurture) and route the result to the MG Labs Co. — New Business queue.
@@ -48,6 +49,7 @@ The final merged release was tested in a browser on the production domain:
 
 - Form loaded successfully and displayed the sandbox label.
 - Empty name and malformed email were rejected by browser validation.
+- A honeypot-filled submission was rejected without completing the workflow.
 - A valid sample submission rendered the qualification and routing timeline.
 - The test lead received a score of **68/100 (Warm)** and was assigned to **MG Labs Co. — New Business**.
 - Render PostgreSQL contained the corresponding row with `mode=sandbox` and `workflow_status=sandbox_completed`.
